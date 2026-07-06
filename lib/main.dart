@@ -25,15 +25,19 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Open Photo Link',
+      title: 'Shotlink',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         brightness: Brightness.dark,
-        primaryColor: const Color(0xFF6366F1),
+        primaryColor: const Color(0xFF2563EB),
         scaffoldBackgroundColor: const Color(0xFF0F172A),
         fontFamily: 'Roboto',
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Color(0xFF0F172A),
+          elevation: 0,
+        ),
       ),
-      home: const CameraScanScreen(),
+      home: const DashboardScreen(),
     );
   }
 }
@@ -262,14 +266,14 @@ class _CameraScanScreenState extends State<CameraScanScreen> with WidgetsBinding
         }
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Tidak dapat membuka link: $_intentUri')),
+            SnackBar(content: Text('Unable to open link: $_intentUri')),
           );
         }
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error saat membuka link: $e')),
+          SnackBar(content: Text('Error opening link: $e')),
         );
       }
     }
@@ -288,7 +292,7 @@ class _CameraScanScreenState extends State<CameraScanScreen> with WidgetsBinding
       return const Scaffold(
         body: Center(
           child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6366F1)),
+            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2563EB)),
           ),
         ),
       );
@@ -300,7 +304,7 @@ class _CameraScanScreenState extends State<CameraScanScreen> with WidgetsBinding
           child: Padding(
             padding: EdgeInsets.all(24.0),
             child: Text(
-              'Akses kamera diperlukan untuk memindai link atau kontak.',
+              'Camera access is required to scan links or contacts.',
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.white, fontSize: 16),
             ),
@@ -322,10 +326,14 @@ class _CameraScanScreenState extends State<CameraScanScreen> with WidgetsBinding
               children: [
                 // Top bar
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 15),
                   child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
+                      IconButton(
+                        icon: const Icon(Icons.arrow_back, color: Colors.white),
+                        onPressed: () => Navigator.of(context).pop(),
+                      ),
+                      const SizedBox(width: 4),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                         decoration: BoxDecoration(
@@ -355,15 +363,17 @@ class _CameraScanScreenState extends State<CameraScanScreen> with WidgetsBinding
                           ],
                         ),
                       ),
+                      const Spacer(),
                       if (_isProcessing)
                         const SizedBox(
                           width: 18,
                           height: 18,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6366F1)),
+                            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2563EB)),
                           ),
                         ),
+                      const SizedBox(width: 8),
                     ],
                   ),
                 ),
@@ -373,7 +383,7 @@ class _CameraScanScreenState extends State<CameraScanScreen> with WidgetsBinding
                   width: 250,
                   height: 250,
                   decoration: BoxDecoration(
-                    border: Border.all(color: const Color(0xFF6366F1), width: 2),
+                    border: Border.all(color: const Color(0xFF2563EB), width: 2),
                     borderRadius: BorderRadius.circular(24),
                     color: Colors.transparent,
                   ),
@@ -422,21 +432,21 @@ class _CameraScanScreenState extends State<CameraScanScreen> with WidgetsBinding
       final url = _detectedData!['url'] as String;
       if (url.contains('instagram')) {
         icon = Icons.camera_alt_outlined;
-        title = 'Buka Instagram';
+        title = 'Open Instagram';
       } else if (url.contains('tiktok')) {
         icon = Icons.music_note;
-        title = 'Buka TikTok';
+        title = 'Open TikTok';
       } else {
         icon = Icons.people_outline;
-        title = 'Buka Sosmed';
+        title = 'Open Social Media';
       }
       subtitle = url;
       buttonColor = const Color(0xFFE1306C);
     } else {
       icon = Icons.link;
-      title = 'Buka Link';
+      title = 'Open Link';
       subtitle = _detectedData!['url'];
-      buttonColor = const Color(0xFF6366F1);
+      buttonColor = const Color(0xFF2563EB);
     }
 
     return Container(
@@ -510,6 +520,212 @@ class _CameraScanScreenState extends State<CameraScanScreen> with WidgetsBinding
             child: const Icon(Icons.arrow_forward),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class DashboardScreen extends StatelessWidget {
+  const DashboardScreen({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Stack(
+              alignment: Alignment.center,
+              children: [
+                const Icon(Icons.camera_alt, color: Color(0xFF2563EB), size: 28),
+                Positioned(
+                  right: 0,
+                  bottom: 0,
+                  child: Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.link, color: Color(0xFF2563EB), size: 12),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(width: 8),
+            const Text(
+              'shotlink',
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF2563EB),
+                letterSpacing: 0.5,
+              ),
+            ),
+          ],
+        ),
+        centerTitle: true,
+      ),
+      drawer: Drawer(
+        backgroundColor: const Color(0xFF1E293B),
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            DrawerHeader(
+              decoration: const BoxDecoration(
+                color: Color(0xFF0F172A),
+                border: Border(
+                  bottom: BorderSide(color: Colors.white10, width: 1),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Row(
+                    children: [
+                      Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          const Icon(Icons.camera_alt, color: Color(0xFF2563EB), size: 32),
+                          Positioned(
+                            right: 0,
+                            bottom: 0,
+                            child: Container(
+                              padding: const EdgeInsets.all(2),
+                              decoration: const BoxDecoration(
+                                color: Colors.white,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.link, color: Color(0xFF2563EB), size: 14),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(width: 10),
+                      const Text(
+                        'shotlink',
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF2563EB),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Shoot your photo and link it!',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.white.withOpacity(0.6),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.all(20.0),
+              child: Text(
+                'Other features coming soon',
+                style: TextStyle(
+                  color: Colors.white60,
+                  fontSize: 14,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Spacer(),
+              // Central Camera Action
+              Center(
+                child: GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const CameraScanScreen()),
+                    );
+                  },
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 150,
+                        height: 150,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF2563EB).withOpacity(0.1),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: const Color(0xFF2563EB), width: 3),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF2563EB).withOpacity(0.3),
+                              blurRadius: 30,
+                              spreadRadius: 5,
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.camera_alt_rounded,
+                          size: 64,
+                          color: Color(0xFF2563EB),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      const Text(
+                        'Tap to Start Photo & Scan',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const Spacer(),
+              // Bottom tagline
+              Text(
+                'Point the camera at text/QR to open links instantly',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.white.withOpacity(0.5),
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 10),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showMoreComingSoon(BuildContext context) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text(
+          'More feature coming soon',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+        ),
+        backgroundColor: const Color(0xFF1E293B),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+        duration: const Duration(seconds: 2),
       ),
     );
   }

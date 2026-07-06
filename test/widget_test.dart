@@ -1,4 +1,4 @@
-// This is a basic Flutter widget test.
+// This is a basic Flutter widget test for Shotlink.
 //
 // To perform an interaction with a widget in your test, use the WidgetTester
 // utility in the flutter_test package. For example, you can send tap and scroll
@@ -11,20 +11,15 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:open_photo_link/main.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
+  testWidgets('Dashboard smoke test', (WidgetTester tester) async {
     // Build our app and trigger a frame.
     await tester.pumpWidget(const MyApp());
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    // Verify that our app bar contains the 'shotlink' logo text.
+    expect(find.text('shotlink'), findsOneWidget);
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
-
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    // Verify that we have a camera icon/button on the dashboard.
+    expect(find.byIcon(Icons.camera_alt_rounded), findsOneWidget);
+    expect(find.text('Tap to Start Photo & Scan'), findsOneWidget);
   });
 }
