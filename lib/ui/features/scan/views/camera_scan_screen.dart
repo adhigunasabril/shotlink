@@ -4,6 +4,7 @@ import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../view_models/scan_view_model.dart';
+import '../../../core/widgets/scan_action_overlay.dart';
 
 class CameraScanScreen extends StatefulWidget {
   final ScanViewModel viewModel;
@@ -209,7 +210,15 @@ class _CameraScanScreenState extends State<CameraScanScreen> with WidgetsBinding
                     ),
                     const Spacer(),
 
-                    if (widget.viewModel.scanResults.isNotEmpty) _buildActionOverlay(),
+                    if (widget.viewModel.scanResults.isNotEmpty)
+                      ScanActionOverlay(
+                        scanResults: widget.viewModel.scanResults,
+                        onActionPressed: (intentUri, data) => widget.viewModel.launchIntent(
+                          intentUri: intentUri,
+                          data: data,
+                          context: context,
+                        ),
+                      ),
                     const SizedBox(height: 20),
                   ],
                 ),
@@ -218,128 +227,6 @@ class _CameraScanScreenState extends State<CameraScanScreen> with WidgetsBinding
           ),
         );
       },
-    );
-  }
-
-  Widget _buildActionOverlay() {
-    return ConstrainedBox(
-      constraints: const BoxConstraints(maxHeight: 220),
-      child: ListView.separated(
-        shrinkWrap: true,
-        physics: const ClampingScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        itemCount: widget.viewModel.scanResults.length,
-        separatorBuilder: (context, index) => const SizedBox(height: 10),
-        itemBuilder: (context, index) {
-          final result = widget.viewModel.scanResults[index];
-          final data = result.data;
-
-          IconData icon;
-          String title;
-          String subtitle;
-          Color buttonColor;
-
-          final type = data['type'];
-          if (type == 'phone') {
-            icon = Icons.chat_bubble_outline;
-            title = 'Chat WhatsApp';
-            subtitle = data['phone'];
-            buttonColor = const Color(0xFF25D366);
-          } else if (type == 'sosmed') {
-            final url = data['url'] as String;
-            if (url.contains('instagram')) {
-              icon = Icons.camera_alt_outlined;
-              title = 'Open Instagram';
-            } else if (url.contains('tiktok')) {
-              icon = Icons.music_note;
-              title = 'Open TikTok';
-            } else {
-              icon = Icons.people_outline;
-              title = 'Open Social Media';
-            }
-            subtitle = url;
-            buttonColor = const Color(0xFFE1306C);
-          } else {
-            icon = Icons.link;
-            title = 'Open Link';
-            subtitle = data['url'];
-            buttonColor = const Color(0xFF2563EB);
-          }
-
-          return Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: const Color(0xFF1E293B).withOpacity(0.95),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.white10),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.2),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                )
-              ],
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: buttonColor.withOpacity(0.15),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(icon, color: buttonColor, size: 20),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        title,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        subtitle,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Colors.white.withOpacity(0.6),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: buttonColor,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    minimumSize: Size.zero,
-                    elevation: 0,
-                  ),
-                  onPressed: () => widget.viewModel.launchIntent(
-                    intentUri: result.intentUri,
-                    data: data,
-                    context: context,
-                  ),
-                  child: const Icon(Icons.arrow_forward, size: 18),
-                ),
-              ],
-            ),
-          );
-        },
-      ),
     );
   }
 }

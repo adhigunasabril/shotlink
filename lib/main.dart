@@ -7,6 +7,8 @@ import 'data/services/url_launcher_service.dart';
 import 'ui/core/theme.dart';
 import 'ui/features/dashboard/views/dashboard_screen.dart';
 import 'ui/features/scan/view_models/scan_view_model.dart';
+import 'data/services/image_picker_service.dart';
+import 'ui/features/upload_image/view_models/upload_image_view_model.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -32,15 +34,27 @@ void main() async {
     urlLauncherService: urlLauncherService,
   );
 
-  runApp(MyApp(scanViewModel: scanViewModel));
+  final imagePickerService = ImagePickerService();
+  final uploadViewModel = UploadImageViewModel(
+    imagePickerService: imagePickerService,
+    scanRepository: scanRepository,
+    urlLauncherService: urlLauncherService,
+  );
+
+  runApp(MyApp(
+    scanViewModel: scanViewModel,
+    uploadViewModel: uploadViewModel,
+  ));
 }
 
 class MyApp extends StatelessWidget {
   final ScanViewModel scanViewModel;
+  final UploadImageViewModel uploadViewModel;
 
   const MyApp({
     Key? key,
     required this.scanViewModel,
+    required this.uploadViewModel,
   }) : super(key: key);
 
   @override
@@ -49,7 +63,10 @@ class MyApp extends StatelessWidget {
       title: 'Shotlink',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.darkTheme,
-      home: DashboardScreen(scanViewModel: scanViewModel),
+      home: DashboardScreen(
+        scanViewModel: scanViewModel,
+        uploadViewModel: uploadViewModel,
+      ),
     );
   }
 }

@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
 import '../../scan/view_models/scan_view_model.dart';
 import '../../scan/views/camera_scan_screen.dart';
+import '../../upload_image/view_models/upload_image_view_model.dart';
+import '../../upload_image/views/upload_image_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
   final ScanViewModel scanViewModel;
+  final UploadImageViewModel uploadViewModel;
 
   const DashboardScreen({
     Key? key,
     required this.scanViewModel,
+    required this.uploadViewModel,
   }) : super(key: key);
 
   @override
@@ -175,6 +179,36 @@ class DashboardScreen extends StatelessWidget {
                           fontWeight: FontWeight.w600,
                           color: Colors.white,
                           letterSpacing: 0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 40),
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white.withOpacity(0.08),
+                          foregroundColor: Colors.white,
+                          side: const BorderSide(color: Colors.white10),
+                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        onPressed: () {
+                          uploadViewModel.clearData();
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => UploadImageScreen(viewModel: uploadViewModel),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.photo_library_outlined, color: Color(0xFF2563EB)),
+                        label: const Text(
+                          'Upload from Gallery',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.5,
+                          ),
                         ),
                       ),
                     ],
