@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:camera/camera.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:google_mlkit_barcode_scanning/google_mlkit_barcode_scanning.dart';
@@ -42,6 +43,18 @@ class MyApp extends StatelessWidget {
   }
 }
 
+class ScanResult {
+  final Map<String, dynamic> data;
+  final Rect boundingBox;
+  final String? intentUri;
+
+  ScanResult({
+    required this.data,
+    required this.boundingBox,
+    required this.intentUri,
+  });
+}
+
 class CameraScanScreen extends StatefulWidget {
   const CameraScanScreen({Key? key}) : super(key: key);
 
@@ -62,9 +75,9 @@ class _CameraScanScreenState extends State<CameraScanScreen> with WidgetsBinding
   final BarcodeScanner _barcodeScanner = BarcodeScanner();
 
   // Detection Results
-  String? _detectedText;
-  Map<String, dynamic>? _detectedData; // {"type": "phone"|"sosmed"|"link", "value": "..."}
-  String? _intentUri;
+  List<ScanResult> _scanResults = [];
+  Size? _imageSize;
+  InputImageRotation? _imageRotation;
 
   @override
   void initState() {
@@ -91,7 +104,9 @@ class _CameraScanScreenState extends State<CameraScanScreen> with WidgetsBinding
     }
 
     if (state == AppLifecycleState.inactive) {
+      _cameraController = null;
       cameraController.dispose();
+      setState(() {});
     } else if (state == AppLifecycleState.resumed) {
       _initializeCamera();
     }
@@ -109,12 +124,13 @@ class _CameraScanScreenState extends State<CameraScanScreen> with WidgetsBinding
 
       _cameraController = CameraController(
         camera,
-        ResolutionPreset.medium, // 720p as requested
+        ResolutionPreset.high, // High resolution (1080p) is fast to process and very sharp
         enableAudio: false,
         imageFormatGroup: Platform.isAndroid ? ImageFormatGroup.nv21 : ImageFormatGroup.bgra8888,
       );
 
       await _cameraController!.initialize();
+      await _cameraController!.lockCaptureOrientation(DeviceOrientation.portraitUp);
       if (!mounted) return;
 
       setState(() {
@@ -132,12 +148,11 @@ class _CameraScanScreenState extends State<CameraScanScreen> with WidgetsBinding
 
   void _processCameraImage(CameraImage image) async {
     if (_isProcessing || !_isScanning) return;
-
+    
     final now = DateTime.now();
-    if (_lastProcessedTime != null && now.difference(_lastProcessedTime!).inMilliseconds < 500) {
-      return; // Process every 500ms
+    if (_lastProcessedTime != null && now.difference(_lastProcessedTime!).inSeconds < 3) {
+      return;
     }
-
     _lastProcessedTime = now;
     _isProcessing = true;
 
@@ -148,62 +163,95 @@ class _CameraScanScreenState extends State<CameraScanScreen> with WidgetsBinding
         return;
       }
 
+      List<ScanResult> newResults = [];
+
       // 1. Process QR/Barcodes
       final barcodes = await _barcodeScanner.processImage(inputImage);
-      if (barcodes.isNotEmpty) {
-        final qrRawValue = barcodes.first.rawValue;
+      for (final barcode in barcodes) {
+        final qrRawValue = barcode.rawValue;
         if (qrRawValue != null) {
           final qrResult = LinkParser.processQRCode(qrRawValue);
           if (qrResult != null) {
-            _handleDetection(qrResult);
-            _isProcessing = false;
-            return;
+            final intent = LinkParser.determineIntent(qrResult);
+            if (intent != null) {
+              newResults.add(ScanResult(
+                data: qrResult,
+                boundingBox: barcode.boundingBox,
+                intentUri: intent,
+              ));
+            }
           }
         }
       }
 
       // 2. Process Text OCR
       final RecognizedText recognizedText = await _textRecognizer.processImage(inputImage);
-      final rawText = recognizedText.text;
+      
+      for (final block in recognizedText.blocks) {
+        for (final line in block.lines) {
+          final lineText = line.text;
+          
+          final phone = LinkParser.extractPhoneNumber(lineText);
+          if (phone != null) {
+            Rect? phoneBox;
+            for (final element in line.elements) {
+              if (element.text.contains(RegExp(r'\d'))) {
+                phoneBox = phoneBox == null ? element.boundingBox : phoneBox.expandToInclude(element.boundingBox);
+              }
+            }
+            final data = {'type': 'phone', 'phone': phone};
+            final intent = LinkParser.determineIntent(data);
+            if (intent != null) {
+              newResults.add(ScanResult(
+                data: data,
+                boundingBox: phoneBox ?? line.boundingBox,
+                intentUri: intent,
+              ));
+            }
+            continue;
+          }
 
-      // Extract phone, sosmed, or links
-      final phone = LinkParser.extractPhoneNumber(rawText);
-      if (phone != null) {
-        _handleDetection({'type': 'phone', 'phone': phone});
-        _isProcessing = false;
-        return;
+          final sosmed = LinkParser.extractSocialMediaLink(lineText);
+          if (sosmed != null) {
+            final data = {'type': 'sosmed', 'url': sosmed};
+            final intent = LinkParser.determineIntent(data);
+            if (intent != null) {
+              newResults.add(ScanResult(
+                data: data,
+                boundingBox: line.boundingBox,
+                intentUri: intent,
+              ));
+            }
+            continue;
+          }
+
+          final link = LinkParser.extractAnyLink(lineText);
+          if (link != null) {
+            final data = {'type': 'link', 'url': link};
+            final intent = LinkParser.determineIntent(data);
+            if (intent != null) {
+              newResults.add(ScanResult(
+                data: data,
+                boundingBox: line.boundingBox,
+                intentUri: intent,
+              ));
+            }
+          }
+        }
       }
 
-      final sosmed = LinkParser.extractSocialMediaLink(rawText);
-      if (sosmed != null) {
-        _handleDetection({'type': 'sosmed', 'url': sosmed});
-        _isProcessing = false;
-        return;
-      }
-
-      final link = LinkParser.extractAnyLink(rawText);
-      if (link != null) {
-        _handleDetection({'type': 'link', 'url': link});
-        _isProcessing = false;
-        return;
+      if (mounted) {
+        setState(() {
+          _scanResults = newResults;
+          _imageSize = inputImage.metadata?.size;
+          _imageRotation = inputImage.metadata?.rotation;
+        });
       }
     } catch (e) {
       debugPrint('Error processing image: $e');
     }
 
     _isProcessing = false;
-  }
-
-  void _handleDetection(Map<String, dynamic> data) {
-    if (!mounted) return;
-
-    final intent = LinkParser.determineIntent(data);
-    if (intent != null) {
-      setState(() {
-        _detectedData = data;
-        _intentUri = intent;
-      });
-    }
   }
 
   InputImage? _inputImageFromCameraImage(CameraImage image) {
@@ -243,30 +291,28 @@ class _CameraScanScreenState extends State<CameraScanScreen> with WidgetsBinding
     );
   }
 
-  Future<void> _launchIntent() async {
-    if (_intentUri == null) return;
-    final url = Uri.parse(_intentUri!);
+  Future<void> _launchIntent(String? intentUri, Map<String, dynamic> data) async {
+    if (intentUri == null) return;
+    final url = Uri.parse(intentUri);
     try {
       if (await canLaunchUrl(url)) {
         await launchUrl(url, mode: LaunchMode.externalApplication);
       } else {
         // Fallback for custom schemes like instagram:// or whatsapp://
-        if (_detectedData != null) {
-          String? fallbackUrl;
-          if (_detectedData!['type'] == 'phone') {
-            fallbackUrl = LinkParser.buildWhatsAppUrl(_detectedData!['phone']);
-          } else if (_detectedData!['type'] == 'sosmed') {
-            fallbackUrl = _detectedData!['url'];
-          }
-          if (fallbackUrl != null) {
-            final fallbackUri = Uri.parse(fallbackUrl);
-            await launchUrl(fallbackUri, mode: LaunchMode.externalApplication);
-            return;
-          }
+        String? fallbackUrl;
+        if (data['type'] == 'phone') {
+          fallbackUrl = LinkParser.buildWhatsAppUrl(data['phone']);
+        } else if (data['type'] == 'sosmed') {
+          fallbackUrl = data['url'];
+        }
+        if (fallbackUrl != null) {
+          final fallbackUri = Uri.parse(fallbackUrl);
+          await launchUrl(fallbackUri, mode: LaunchMode.externalApplication);
+          return;
         }
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Unable to open link: $_intentUri')),
+            SnackBar(content: Text('Unable to open link: $intentUri')),
           );
         }
       }
@@ -281,9 +327,51 @@ class _CameraScanScreenState extends State<CameraScanScreen> with WidgetsBinding
 
   void _clearDetection() {
     setState(() {
-      _detectedData = null;
-      _intentUri = null;
+      _scanResults = [];
+      _imageSize = null;
+      _imageRotation = null;
     });
+  }
+
+  Rect? _getScreenRect(Rect? box, Size? imageSize, InputImageRotation? rotation, Size screenSize) {
+    if (box == null || imageSize == null || rotation == null) return null;
+
+    final bool isPortrait = rotation == InputImageRotation.rotation90deg || rotation == InputImageRotation.rotation270deg;
+    
+    // In portrait mode, camera sensor dimensions map flipped to screen coordinates
+    final double srcWidth = isPortrait ? imageSize.height : imageSize.width;
+    final double srcHeight = isPortrait ? imageSize.width : imageSize.height;
+
+    final double scaleX = screenSize.width / srcWidth;
+    final double scaleY = screenSize.height / srcHeight;
+    final double scale = scaleX > scaleY ? scaleX : scaleY;
+    
+    final double offsetX = (screenSize.width - srcWidth * scale) / 2;
+    final double offsetY = (screenSize.height - srcHeight * scale) / 2;
+
+    double left = box.left;
+    double right = box.right;
+    double top = box.top;
+    double bottom = box.bottom;
+
+    if (rotation == InputImageRotation.rotation90deg) {
+      left = box.top;
+      right = box.bottom;
+      top = imageSize.width - box.right;
+      bottom = imageSize.width - box.left;
+    } else if (rotation == InputImageRotation.rotation270deg) {
+      left = imageSize.height - box.bottom;
+      right = imageSize.height - box.top;
+      top = box.left;
+      bottom = box.right;
+    }
+
+    return Rect.fromLTRB(
+      left * scale + offsetX,
+      top * scale + offsetY,
+      right * scale + offsetX,
+      bottom * scale + offsetY,
+    );
   }
 
   @override
@@ -317,8 +405,32 @@ class _CameraScanScreenState extends State<CameraScanScreen> with WidgetsBinding
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // Camera Preview
-          CameraPreview(_cameraController!),
+          // Camera Preview (fitted to cover screen without stretching)
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final size = constraints.biggest;
+              
+              return Stack(
+                fit: StackFit.expand,
+                children: [
+                  SizedBox(
+                    width: size.width,
+                    height: size.height,
+                    child: ClipRect(
+                      child: FittedBox(
+                        fit: BoxFit.cover,
+                        child: SizedBox(
+                          width: _cameraController!.value.previewSize?.height ?? size.width,
+                          height: _cameraController!.value.previewSize?.width ?? size.height,
+                          child: CameraPreview(_cameraController!),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
 
           // Glassmorphic Scanner UI Overlay
           SafeArea(
@@ -378,35 +490,8 @@ class _CameraScanScreenState extends State<CameraScanScreen> with WidgetsBinding
                   ),
                 ),
                 const Spacer(),
-                // Scanner Frame/Target UI
-                Container(
-                  width: 250,
-                  height: 250,
-                  decoration: BoxDecoration(
-                    border: Border.all(color: const Color(0xFF2563EB), width: 2),
-                    borderRadius: BorderRadius.circular(24),
-                    color: Colors.transparent,
-                  ),
-                  child: Stack(
-                    children: [
-                      Align(
-                        alignment: Alignment.center,
-                        child: Opacity(
-                          opacity: 0.2,
-                          child: Icon(
-                            Icons.qr_code_scanner,
-                            size: 150,
-                            color: Theme.of(context).primaryColor,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const Spacer(),
 
-                // Persistent Action Overlay
-                if (_detectedData != null) _buildActionOverlay(),
+                if (_scanResults.isNotEmpty) _buildActionOverlay(),
                 const SizedBox(height: 20),
               ],
             ),
@@ -417,109 +502,119 @@ class _CameraScanScreenState extends State<CameraScanScreen> with WidgetsBinding
   }
 
   Widget _buildActionOverlay() {
-    IconData icon;
-    String title;
-    String subtitle;
-    Color buttonColor;
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxHeight: 220),
+      child: ListView.separated(
+        shrinkWrap: true,
+        physics: const ClampingScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        itemCount: _scanResults.length,
+        separatorBuilder: (context, index) => const SizedBox(height: 10),
+        itemBuilder: (context, index) {
+          final result = _scanResults[index];
+          final data = result.data;
+          
+          IconData icon;
+          String title;
+          String subtitle;
+          Color buttonColor;
 
-    final type = _detectedData!['type'];
-    if (type == 'phone') {
-      icon = Icons.chat_bubble_outline;
-      title = 'Chat WhatsApp';
-      subtitle = _detectedData!['phone'];
-      buttonColor = const Color(0xFF25D366);
-    } else if (type == 'sosmed') {
-      final url = _detectedData!['url'] as String;
-      if (url.contains('instagram')) {
-        icon = Icons.camera_alt_outlined;
-        title = 'Open Instagram';
-      } else if (url.contains('tiktok')) {
-        icon = Icons.music_note;
-        title = 'Open TikTok';
-      } else {
-        icon = Icons.people_outline;
-        title = 'Open Social Media';
-      }
-      subtitle = url;
-      buttonColor = const Color(0xFFE1306C);
-    } else {
-      icon = Icons.link;
-      title = 'Open Link';
-      subtitle = _detectedData!['url'];
-      buttonColor = const Color(0xFF2563EB);
-    }
+          final type = data['type'];
+          if (type == 'phone') {
+            icon = Icons.chat_bubble_outline;
+            title = 'Chat WhatsApp';
+            subtitle = data['phone'];
+            buttonColor = const Color(0xFF25D366);
+          } else if (type == 'sosmed') {
+            final url = data['url'] as String;
+            if (url.contains('instagram')) {
+              icon = Icons.camera_alt_outlined;
+              title = 'Open Instagram';
+            } else if (url.contains('tiktok')) {
+              icon = Icons.music_note;
+              title = 'Open TikTok';
+            } else {
+              icon = Icons.people_outline;
+              title = 'Open Social Media';
+            }
+            subtitle = url;
+            buttonColor = const Color(0xFFE1306C);
+          } else {
+            icon = Icons.link;
+            title = 'Open Link';
+            subtitle = data['url'];
+            buttonColor = const Color(0xFF2563EB);
+          }
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1E293B).withOpacity(0.95),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white10),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.3),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          )
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
+          return Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: buttonColor.withOpacity(0.15),
-              shape: BoxShape.circle,
+              color: const Color(0xFF1E293B).withOpacity(0.95),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.white10),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.2),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                )
+              ],
             ),
-            child: Icon(icon, color: buttonColor, size: 24),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
+            child: Row(
               children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                    color: Colors.white,
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: buttonColor.withOpacity(0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(icon, color: buttonColor, size: 20),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.white.withOpacity(0.6),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.white.withOpacity(0.6),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: buttonColor,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    minimumSize: Size.zero,
+                    elevation: 0,
                   ),
+                  onPressed: () => _launchIntent(result.intentUri, data),
+                  child: const Icon(Icons.arrow_forward, size: 18),
                 ),
               ],
             ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.close, color: Colors.white38, size: 20),
-            onPressed: _clearDetection,
-          ),
-          const SizedBox(width: 4),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: buttonColor,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              elevation: 0,
-            ),
-            onPressed: _launchIntent,
-            child: const Icon(Icons.arrow_forward),
-          ),
-        ],
+          );
+        },
       ),
     );
   }
