@@ -38,7 +38,7 @@ class ScanRepository {
         }
       }
     } catch (e) {
-      // Log or handle error
+      print('Error scanning barcode: $e');
     }
 
     // 2. Process Text OCR
@@ -99,7 +99,7 @@ class ScanRepository {
         }
       }
     } catch (e) {
-      // Log or handle error
+      print('Error processing OCR: $e');
     }
 
     return newResults;

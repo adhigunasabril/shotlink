@@ -3,6 +3,7 @@ import '../../scan/view_models/scan_view_model.dart';
 import '../../scan/views/camera_scan_screen.dart';
 import '../../upload_image/view_models/upload_image_view_model.dart';
 import '../../upload_image/views/upload_image_screen.dart';
+import '../../settings/views/settings_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
   final ScanViewModel scanViewModel;
@@ -52,78 +53,19 @@ class DashboardScreen extends StatelessWidget {
           ],
         ),
         centerTitle: true,
-      ),
-      drawer: Drawer(
-        backgroundColor: const Color(0xFF1E293B),
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            DrawerHeader(
-              decoration: const BoxDecoration(
-                color: Color(0xFF0F172A),
-                border: Border(
-                  bottom: BorderSide(color: Colors.white10, width: 1),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const SettingsScreen(),
                 ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Row(
-                    children: [
-                      Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          const Icon(Icons.camera_alt, color: Color(0xFF2563EB), size: 32),
-                          Positioned(
-                            right: 0,
-                            bottom: 0,
-                            child: Container(
-                              padding: const EdgeInsets.all(2),
-                              decoration: const BoxDecoration(
-                                color: Colors.white,
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(Icons.link, color: Color(0xFF2563EB), size: 14),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(width: 10),
-                      const Text(
-                        'shotlink',
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF2563EB),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Shoot your photo and link it!',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.white.withOpacity(0.6),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Padding(
-              padding: EdgeInsets.all(20.0),
-              child: Text(
-                'Other features coming soon',
-                style: TextStyle(
-                  color: Colors.white60,
-                  fontSize: 14,
-                  fontStyle: FontStyle.italic,
-                ),
-              ),
-            ),
-          ],
-        ),
+              );
+            },
+          ),
+        ],
       ),
       body: SafeArea(
         child: Padding(

@@ -78,6 +78,14 @@ class LinkParser {
     if (trimmed.startsWith(RegExp(r'https?://', caseSensitive: false))) {
       return {"type": "link", "url": trimmed};
     }
+    final sosmed = extractSocialMediaLink(trimmed) ?? extractSocialMediaLink('https://$trimmed');
+    if (sosmed != null) {
+      return {"type": "sosmed", "url": sosmed};
+    }
+    final link = extractAnyLink(trimmed) ?? extractAnyLink('https://$trimmed');
+    if (link != null) {
+      return {"type": "link", "url": link};
+    }
     final phone = extractPhoneNumber(trimmed);
     if (phone != null) {
       return {"type": "phone", "phone": phone};

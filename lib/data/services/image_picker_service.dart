@@ -4,7 +4,11 @@ class ImagePickerService {
   final ImagePicker _picker = ImagePicker();
 
   Future<String?> pickImageFromGallery() async {
-    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+    final XFile? image = await _picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1200,
+      maxHeight: 1200,
+    );
     return image?.path;
   }
 }
