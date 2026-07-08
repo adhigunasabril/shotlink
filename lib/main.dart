@@ -10,6 +10,9 @@ import 'ui/features/scan/view_models/scan_view_model.dart';
 import 'data/services/image_picker_service.dart';
 import 'ui/features/upload_image/view_models/upload_image_view_model.dart';
 
+import 'package:shared_preferences/shared_preferences.dart';
+import 'data/services/preferences_service.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
@@ -18,6 +21,9 @@ void main() async {
   } catch (e) {
     debugPrint('Error initializing cameras at startup: $e');
   }
+
+  final sharedPreferences = await SharedPreferences.getInstance();
+  final preferencesService = PreferencesService(sharedPreferences);
 
   // Inject Dependencies manually (or via DI container if needed, but constructor-injection is sufficient here)
   final ocrService = OcrService();
@@ -32,6 +38,7 @@ void main() async {
   final scanViewModel = ScanViewModel(
     scanRepository: scanRepository,
     urlLauncherService: urlLauncherService,
+    preferencesService: preferencesService,
   );
 
   final imagePickerService = ImagePickerService();
@@ -39,22 +46,26 @@ void main() async {
     imagePickerService: imagePickerService,
     scanRepository: scanRepository,
     urlLauncherService: urlLauncherService,
+    preferencesService: preferencesService,
   );
 
   runApp(MyApp(
     scanViewModel: scanViewModel,
     uploadViewModel: uploadViewModel,
+    preferencesService: preferencesService,
   ));
 }
 
 class MyApp extends StatelessWidget {
   final ScanViewModel scanViewModel;
   final UploadImageViewModel uploadViewModel;
+  final PreferencesService preferencesService;
 
   const MyApp({
     Key? key,
     required this.scanViewModel,
     required this.uploadViewModel,
+    required this.preferencesService,
   }) : super(key: key);
 
   @override
@@ -66,6 +77,7 @@ class MyApp extends StatelessWidget {
       home: DashboardScreen(
         scanViewModel: scanViewModel,
         uploadViewModel: uploadViewModel,
+        preferencesService: preferencesService,
       ),
     );
   }

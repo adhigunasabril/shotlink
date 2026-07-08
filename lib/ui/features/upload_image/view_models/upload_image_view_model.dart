@@ -7,18 +7,23 @@ import '../../../../data/services/url_launcher_service.dart';
 import '../../../../domain/models/scan_result.dart';
 import '../../../../parser.dart';
 
+import '../../../../data/services/preferences_service.dart';
+
 class UploadImageViewModel extends ChangeNotifier {
   final ImagePickerService _imagePickerService;
   final ScanRepository _scanRepository;
   final UrlLauncherService _urlLauncherService;
+  final PreferencesService _preferencesService;
 
   UploadImageViewModel({
     required ImagePickerService imagePickerService,
     required ScanRepository scanRepository,
     required UrlLauncherService urlLauncherService,
+    required PreferencesService preferencesService,
   })  : _imagePickerService = imagePickerService,
         _scanRepository = scanRepository,
-        _urlLauncherService = urlLauncherService;
+        _urlLauncherService = urlLauncherService,
+        _preferencesService = preferencesService;
 
   String? _imagePath;
   String? get imagePath => _imagePath;
@@ -47,7 +52,8 @@ class UploadImageViewModel extends ChangeNotifier {
       notifyListeners();
 
       final inputImage = InputImage.fromFilePath(path);
-      final results = await _scanRepository.scanImage(inputImage);
+      final countryDialCode = _preferencesService.getCountryDialCode() ?? '62';
+      final results = await _scanRepository.scanImage(inputImage, countryDialCode: countryDialCode);
 
       _scanResults = results;
     } catch (e) {
@@ -71,7 +77,8 @@ class UploadImageViewModel extends ChangeNotifier {
       } else {
         String? fallbackUrl;
         if (data['type'] == 'phone') {
-          fallbackUrl = LinkParser.buildWhatsAppUrl(data['phone']);
+          final countryDialCode = _preferencesService.getCountryDialCode() ?? '62';
+          fallbackUrl = LinkParser.buildWhatsAppUrl(data['phone'], countryDialCode);
         } else if (data['type'] == 'sosmed') {
           fallbackUrl = data['url'];
         }

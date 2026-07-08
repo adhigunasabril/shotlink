@@ -4,16 +4,38 @@ import '../../scan/views/camera_scan_screen.dart';
 import '../../upload_image/view_models/upload_image_view_model.dart';
 import '../../upload_image/views/upload_image_screen.dart';
 import '../../settings/views/settings_screen.dart';
+import '../../../../data/services/preferences_service.dart';
 
 class DashboardScreen extends StatelessWidget {
   final ScanViewModel scanViewModel;
   final UploadImageViewModel uploadViewModel;
+  final PreferencesService preferencesService;
 
   const DashboardScreen({
     Key? key,
     required this.scanViewModel,
     required this.uploadViewModel,
+    required this.preferencesService,
   }) : super(key: key);
+
+  bool _checkCountryAndRedirect(BuildContext context) {
+    if (!preferencesService.isCountryConfigured()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Silakan pilih negara Anda terlebih dahulu di halaman Settings.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => SettingsScreen(preferencesService: preferencesService),
+        ),
+      );
+      return false;
+    }
+    return true;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -60,7 +82,7 @@ class DashboardScreen extends StatelessWidget {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => const SettingsScreen(),
+                  builder: (context) => SettingsScreen(preferencesService: preferencesService),
                 ),
               );
             },
@@ -79,6 +101,8 @@ class DashboardScreen extends StatelessWidget {
               Center(
                 child: GestureDetector(
                   onTap: () {
+                    if (!_checkCountryAndRedirect(context)) return;
+
                     // Reset scanner state before launching camera screen
                     scanViewModel.clearDetections();
                     scanViewModel.toggleScanning(true);
@@ -135,6 +159,8 @@ class DashboardScreen extends StatelessWidget {
                           ),
                         ),
                         onPressed: () {
+                          if (!_checkCountryAndRedirect(context)) return;
+
                           uploadViewModel.clearData();
                           Navigator.push(
                             context,

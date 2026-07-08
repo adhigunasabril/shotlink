@@ -9,15 +9,20 @@ import '../../../../data/services/url_launcher_service.dart';
 import '../../../../domain/models/scan_result.dart';
 import '../../../../parser.dart';
 
+import '../../../../data/services/preferences_service.dart';
+
 class ScanViewModel extends ChangeNotifier {
   final ScanRepository _scanRepository;
   final UrlLauncherService _urlLauncherService;
+  final PreferencesService _preferencesService;
 
   ScanViewModel({
     required ScanRepository scanRepository,
     required UrlLauncherService urlLauncherService,
+    required PreferencesService preferencesService,
   })  : _scanRepository = scanRepository,
-        _urlLauncherService = urlLauncherService;
+        _urlLauncherService = urlLauncherService,
+        _preferencesService = preferencesService;
 
   List<ScanResult> _scanResults = [];
   List<ScanResult> get scanResults => _scanResults;
@@ -67,7 +72,8 @@ class ScanViewModel extends ChangeNotifier {
         return;
       }
 
-      final results = await _scanRepository.scanImage(inputImage);
+      final countryDialCode = _preferencesService.getCountryDialCode() ?? '62';
+      final results = await _scanRepository.scanImage(inputImage, countryDialCode: countryDialCode);
 
       _scanResults = results;
       _imageSize = inputImage.metadata?.size;
@@ -94,7 +100,8 @@ class ScanViewModel extends ChangeNotifier {
         // Fallback for custom schemes like instagram:// or whatsapp://
         String? fallbackUrl;
         if (data['type'] == 'phone') {
-          fallbackUrl = LinkParser.buildWhatsAppUrl(data['phone']);
+          final countryDialCode = _preferencesService.getCountryDialCode() ?? '62';
+          fallbackUrl = LinkParser.buildWhatsAppUrl(data['phone'], countryDialCode);
         } else if (data['type'] == 'sosmed') {
           fallbackUrl = data['url'];
         }

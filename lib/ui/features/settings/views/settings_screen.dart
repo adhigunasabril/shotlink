@@ -1,28 +1,106 @@
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:country_picker/country_picker.dart';
+import '../../../../data/services/preferences_service.dart';
 
-class SettingsScreen extends StatelessWidget {
-  const SettingsScreen({Key? key}) : super(key: key);
+class SettingsScreen extends StatefulWidget {
+  final PreferencesService preferencesService;
 
-  Future<void> _launchUrl(String urlString, BuildContext context) async {
-    final url = Uri.parse(urlString);
-    try {
-      if (await canLaunchUrl(url)) {
-        await launchUrl(url, mode: LaunchMode.externalApplication);
-      } else {
-        if (context.mounted) {
+  const SettingsScreen({Key? key, required this.preferencesService}) : super(key: key);
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  String? _dialCode;
+  String? _countryName;
+
+  @override
+  void initState() {
+    super.initState();
+    _dialCode = widget.preferencesService.getCountryDialCode();
+    _countryName = widget.preferencesService.getCountryName();
+
+    if (_dialCode == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _showAutoDetectDialog();
+      });
+    }
+  }
+
+  void _showAutoDetectDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('Deteksi Negara'),
+        content: const Text(
+            'Apakah Anda ingin mendeteksi negara secara otomatis berdasarkan pengaturan HP Anda?'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _selectCountryManually();
+            },
+            child: const Text('Pilih Manual'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _autoDetectCountry();
+            },
+            child: const Text('Ya, Deteksi'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _autoDetectCountry() {
+    final localCode = WidgetsBinding.instance.platformDispatcher.locale.countryCode;
+    if (localCode != null) {
+      try {
+        final country = CountryService().findByCode(localCode);
+        if (country != null) {
+          _saveCountry(country.phoneCode, country.name);
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Could not launch $urlString')),
+            SnackBar(
+              content: Text('Berhasil mendeteksi negara: ${country.name} (+${country.phoneCode})'),
+              behavior: SnackBarBehavior.floating,
+            ),
           );
+          return;
         }
-      }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
+      } catch (e) {
+        debugPrint('Error finding country by code: $e');
       }
     }
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Gagal mendeteksi negara secara otomatis. Silakan pilih secara manual.'),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+    _selectCountryManually();
+  }
+
+  void _selectCountryManually() {
+    showCountryPicker(
+      context: context,
+      onSelect: (Country country) {
+        _saveCountry(country.phoneCode, country.name);
+      },
+    );
+  }
+
+  void _saveCountry(String dialCode, String name) {
+    widget.preferencesService.setCountryDialCode(dialCode);
+    widget.preferencesService.setCountryName(name);
+    setState(() {
+      _dialCode = dialCode;
+      _countryName = name;
+    });
   }
 
   @override
@@ -35,64 +113,17 @@ class SettingsScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
         children: [
-          // Section: General Info
-          _buildSectionHeader('General'),
+          // Section: Country Code Configuration
+          _buildSectionHeader('WhatsApp Configuration'),
           _buildSettingsTile(
-            icon: Icons.info_outline,
-            title: 'About Shotlink',
-            subtitle: 'Learn more about this app',
-            onTap: () {
-              showAboutDialog(
-                context: context,
-                applicationName: 'Shotlink',
-                applicationVersion: '1.0.0',
-                applicationIcon: const Icon(
-                  Icons.camera_alt,
-                  color: Color(0xFF2563EB),
-                  size: 40,
-                ),
-                children: [
-                  const SizedBox(height: 10),
-                  const Text(
-                    'Shotlink is an application that allows you to point your camera or upload images containing text, phone numbers, or QR codes and launch intents instantly.',
-                  ),
-                ],
-              );
-            },
+            icon: Icons.public,
+            title: 'Country Code',
+            subtitle: _dialCode != null 
+                ? '$_countryName (+$_dialCode)' 
+                : 'Not Configured (Tap to set)',
+            onTap: _selectCountryManually,
           ),
-          _buildSettingsTile(
-            icon: Icons.gavel_outlined,
-            title: 'Licenses',
-            subtitle: 'View open source licenses',
-            onTap: () {
-              showLicensePage(
-                context: context,
-                applicationName: 'Shotlink',
-                applicationVersion: '1.0.0',
-              );
-            },
-          ),
-          const SizedBox(height: 20),
-
-          // Section: Support & Socials
-          _buildSectionHeader('Support'),
-          _buildSettingsTile(
-            icon: Icons.help_outline_rounded,
-            title: 'Need Help?',
-            subtitle: 'Contact support team',
-            onTap: () => _launchUrl('https://wa.me/6281234567890', context),
-          ),
-          _buildSettingsTile(
-            icon: Icons.star_border_rounded,
-            title: 'Rate Us',
-            subtitle: 'Share your feedback on Play Store / App Store',
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Thank you for your feedback!')),
-              );
-            },
-          ),
-          const SizedBox(height: 30),
+          const SizedBox(height: 40),
 
           // Footer version
           Center(

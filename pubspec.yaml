@@ -39,6 +39,8 @@ dependencies:
   google_mlkit_barcode_scanning: ^0.14.2
   url_launcher: ^6.3.2
   image_picker: ^1.0.7
+  shared_preferences: ^2.5.5
+  country_picker: ^2.0.28
 
 dev_dependencies:
   flutter_test:

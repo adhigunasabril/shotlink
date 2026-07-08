@@ -12,13 +12,24 @@ import 'package:open_photo_link/domain/models/scan_result.dart';
 import 'package:open_photo_link/data/services/image_picker_service.dart';
 import 'package:open_photo_link/ui/features/upload_image/view_models/upload_image_view_model.dart';
 
+import 'package:open_photo_link/data/services/preferences_service.dart';
+
 class FakeOcrService extends Fake implements OcrService {}
 class FakeBarcodeService extends Fake implements BarcodeService {}
 class FakeUrlLauncherService extends Fake implements UrlLauncherService {}
 
 class FakeScanRepository extends Fake implements ScanRepository {
   @override
-  Future<List<ScanResult>> scanImage(InputImage inputImage) async => [];
+  Future<List<ScanResult>> scanImage(InputImage inputImage, {String countryDialCode = '62'}) async => [];
+}
+
+class FakePreferencesService extends Fake implements PreferencesService {
+  @override
+  String? getCountryDialCode() => '62';
+  @override
+  String? getCountryName() => 'Indonesia';
+  @override
+  bool isCountryConfigured() => true;
 }
 
 class FakeScanViewModel extends ScanViewModel {
@@ -26,6 +37,7 @@ class FakeScanViewModel extends ScanViewModel {
       : super(
           scanRepository: FakeScanRepository(),
           urlLauncherService: FakeUrlLauncherService(),
+          preferencesService: FakePreferencesService(),
         );
 
   @override
@@ -46,6 +58,7 @@ class FakeUploadImageViewModel extends UploadImageViewModel {
           imagePickerService: FakeImagePickerService(),
           scanRepository: FakeScanRepository(),
           urlLauncherService: FakeUrlLauncherService(),
+          preferencesService: FakePreferencesService(),
         );
 
   @override
@@ -62,11 +75,13 @@ void main() {
   testWidgets('Dashboard smoke test', (WidgetTester tester) async {
     final viewModel = FakeScanViewModel();
     final uploadViewModel = FakeUploadImageViewModel();
+    final preferencesService = FakePreferencesService();
 
     // Build our app and trigger a frame.
     await tester.pumpWidget(MyApp(
       scanViewModel: viewModel,
       uploadViewModel: uploadViewModel,
+      preferencesService: preferencesService,
     ));
 
     // Verify that our app bar contains the 'shotlink' logo text.

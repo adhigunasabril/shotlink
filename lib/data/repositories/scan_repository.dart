@@ -15,7 +15,7 @@ class ScanRepository {
   })  : _ocrService = ocrService,
         _barcodeService = barcodeService;
 
-  Future<List<ScanResult>> scanImage(InputImage inputImage) async {
+  Future<List<ScanResult>> scanImage(InputImage inputImage, {String countryDialCode = '62'}) async {
     final List<ScanResult> newResults = [];
 
     // 1. Process QR/Barcodes
@@ -24,9 +24,9 @@ class ScanRepository {
       for (final barcode in barcodes) {
         final qrRawValue = barcode.rawValue;
         if (qrRawValue != null) {
-          final qrResult = LinkParser.processQRCode(qrRawValue);
+          final qrResult = LinkParser.processQRCode(qrRawValue, countryDialCode: countryDialCode);
           if (qrResult != null) {
-            final intent = LinkParser.determineIntent(qrResult);
+            final intent = LinkParser.determineIntent(qrResult, countryDialCode: countryDialCode);
             if (intent != null) {
               newResults.add(ScanResult(
                 data: qrResult,
@@ -48,7 +48,7 @@ class ScanRepository {
         for (final line in block.lines) {
           final lineText = line.text;
 
-          final phone = LinkParser.extractPhoneNumber(lineText);
+          final phone = LinkParser.extractPhoneNumber(lineText, countryDialCode: countryDialCode);
           if (phone != null) {
             Rect? phoneBox;
             for (final element in line.elements) {
@@ -59,7 +59,7 @@ class ScanRepository {
               }
             }
             final data = {'type': 'phone', 'phone': phone};
-            final intent = LinkParser.determineIntent(data);
+            final intent = LinkParser.determineIntent(data, countryDialCode: countryDialCode);
             if (intent != null) {
               newResults.add(ScanResult(
                 data: data,
@@ -73,7 +73,7 @@ class ScanRepository {
           final sosmed = LinkParser.extractSocialMediaLink(lineText);
           if (sosmed != null) {
             final data = {'type': 'sosmed', 'url': sosmed};
-            final intent = LinkParser.determineIntent(data);
+            final intent = LinkParser.determineIntent(data, countryDialCode: countryDialCode);
             if (intent != null) {
               newResults.add(ScanResult(
                 data: data,
@@ -87,7 +87,7 @@ class ScanRepository {
           final link = LinkParser.extractAnyLink(lineText);
           if (link != null) {
             final data = {'type': 'link', 'url': link};
-            final intent = LinkParser.determineIntent(data);
+            final intent = LinkParser.determineIntent(data, countryDialCode: countryDialCode);
             if (intent != null) {
               newResults.add(ScanResult(
                 data: data,

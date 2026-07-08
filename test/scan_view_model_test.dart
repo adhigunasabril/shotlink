@@ -6,12 +6,23 @@ import 'package:open_photo_link/data/repositories/scan_repository.dart';
 import 'package:open_photo_link/data/services/url_launcher_service.dart';
 import 'package:open_photo_link/domain/models/scan_result.dart';
 
+import 'package:open_photo_link/data/services/preferences_service.dart';
+
 class MockScanRepository extends Fake implements ScanRepository {
   final List<ScanResult> stubbedResults;
   MockScanRepository(this.stubbedResults);
 
   @override
-  Future<List<ScanResult>> scanImage(InputImage inputImage) async => stubbedResults;
+  Future<List<ScanResult>> scanImage(InputImage inputImage, {String countryDialCode = '62'}) async => stubbedResults;
+}
+
+class FakePreferencesService extends Fake implements PreferencesService {
+  @override
+  String? getCountryDialCode() => '62';
+  @override
+  String? getCountryName() => 'Indonesia';
+  @override
+  bool isCountryConfigured() => true;
 }
 
 class MockUrlLauncherService extends Fake implements UrlLauncherService {
@@ -35,9 +46,11 @@ void main() {
     test('toggleScanning should update state', () {
       final repository = MockScanRepository([]);
       final urlLauncher = MockUrlLauncherService();
+      final preferencesService = FakePreferencesService();
       final viewModel = ScanViewModel(
         scanRepository: repository,
         urlLauncherService: urlLauncher,
+        preferencesService: preferencesService,
       );
 
       expect(viewModel.isScanning, isTrue);
@@ -49,9 +62,11 @@ void main() {
     test('clearDetections should clear results and sizes', () {
       final repository = MockScanRepository([]);
       final urlLauncher = MockUrlLauncherService();
+      final preferencesService = FakePreferencesService();
       final viewModel = ScanViewModel(
         scanRepository: repository,
         urlLauncherService: urlLauncher,
+        preferencesService: preferencesService,
       );
 
       viewModel.clearDetections();
