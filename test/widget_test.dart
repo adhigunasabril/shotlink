@@ -1,30 +1,94 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
+import 'package:google_mlkit_barcode_scanning/google_mlkit_barcode_scanning.dart';
+import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:open_photo_link/main.dart';
+import 'package:open_photo_link/ui/features/scan/view_models/scan_view_model.dart';
+import 'package:open_photo_link/data/repositories/scan_repository.dart';
+import 'package:open_photo_link/data/services/ocr_service.dart';
+import 'package:open_photo_link/data/services/barcode_service.dart';
+import 'package:open_photo_link/data/services/url_launcher_service.dart';
+import 'package:open_photo_link/domain/models/scan_result.dart';
+import 'package:open_photo_link/data/services/image_picker_service.dart';
+import 'package:open_photo_link/ui/features/upload_image/view_models/upload_image_view_model.dart';
+
+import 'package:open_photo_link/data/services/preferences_service.dart';
+
+class FakeOcrService extends Fake implements OcrService {}
+class FakeBarcodeService extends Fake implements BarcodeService {}
+class FakeUrlLauncherService extends Fake implements UrlLauncherService {}
+
+class FakeScanRepository extends Fake implements ScanRepository {
+  @override
+  Future<List<ScanResult>> scanImage(InputImage inputImage, {String countryDialCode = '62'}) async => [];
+}
+
+class FakePreferencesService extends Fake implements PreferencesService {
+  @override
+  String? getCountryDialCode() => '62';
+  @override
+  String? getCountryName() => 'Indonesia';
+  @override
+  bool isCountryConfigured() => true;
+}
+
+class FakeScanViewModel extends ScanViewModel {
+  FakeScanViewModel()
+      : super(
+          scanRepository: FakeScanRepository(),
+          urlLauncherService: FakeUrlLauncherService(),
+          preferencesService: FakePreferencesService(),
+        );
+
+  @override
+  bool get isProcessing => false;
+
+  @override
+  bool get isScanning => true;
+
+  @override
+  List<ScanResult> get scanResults => [];
+}
+
+class FakeImagePickerService extends Fake implements ImagePickerService {}
+
+class FakeUploadImageViewModel extends UploadImageViewModel {
+  FakeUploadImageViewModel()
+      : super(
+          imagePickerService: FakeImagePickerService(),
+          scanRepository: FakeScanRepository(),
+          urlLauncherService: FakeUrlLauncherService(),
+          preferencesService: FakePreferencesService(),
+        );
+
+  @override
+  bool get isLoading => false;
+
+  @override
+  List<ScanResult> get scanResults => [];
+
+  @override
+  String? get imagePath => null;
+}
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
+  testWidgets('Dashboard smoke test', (WidgetTester tester) async {
+    final viewModel = FakeScanViewModel();
+    final uploadViewModel = FakeUploadImageViewModel();
+    final preferencesService = FakePreferencesService();
+
     // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+    await tester.pumpWidget(MyApp(
+      scanViewModel: viewModel,
+      uploadViewModel: uploadViewModel,
+      preferencesService: preferencesService,
+    ));
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    // Verify that our app bar contains the 'shotlink' logo text.
+    expect(find.text('shotlink'), findsOneWidget);
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
-
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    // Verify that we have a camera icon/button on the dashboard.
+    expect(find.byIcon(Icons.camera_alt_rounded), findsOneWidget);
+    expect(find.text('Tap to Start Photo & Scan'), findsOneWidget);
   });
 }

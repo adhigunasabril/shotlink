@@ -24,7 +24,7 @@ void main() {
       
       // When
       final phone = LinkParser.extractPhoneNumber(text);
-      final formatted = phone != null ? LinkParser.formatPhoneForWhatsApp(phone) : null;
+      final formatted = phone != null ? LinkParser.formatPhoneForWhatsApp(phone, '62') : null;
       
       // Then
       expect(phone, equals('081234567890'));
@@ -38,7 +38,7 @@ void main() {
       
       // When
       final phone = LinkParser.extractPhoneNumber(text);
-      final formatted = phone != null ? LinkParser.formatPhoneForWhatsApp(phone) : null;
+      final formatted = phone != null ? LinkParser.formatPhoneForWhatsApp(phone, '62') : null;
       
       // Then
       expect(phone, equals('+6281234567890'));
@@ -52,7 +52,7 @@ void main() {
       
       // When
       final phone = LinkParser.extractPhoneNumber(text);
-      final formatted = phone != null ? LinkParser.formatPhoneForWhatsApp(phone) : null;
+      final formatted = phone != null ? LinkParser.formatPhoneForWhatsApp(phone, '62') : null;
       
       // Then
       expect(phone, equals('081234567890'));
