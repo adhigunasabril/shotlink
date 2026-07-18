@@ -18,23 +18,25 @@ class DashboardScreen extends StatelessWidget {
     required this.preferencesService,
   }) : super(key: key);
 
-  bool _checkCountryAndRedirect(BuildContext context) {
-    if (!preferencesService.isCountryConfigured()) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Silakan pilih negara Anda terlebih dahulu di halaman Settings.'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => SettingsScreen(preferencesService: preferencesService),
-        ),
-      );
-      return false;
-    }
-    return true;
+  void _navigateToScan(BuildContext context) {
+    scanViewModel.clearDetections();
+    scanViewModel.toggleScanning(true);
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CameraScanScreen(viewModel: scanViewModel),
+      ),
+    );
+  }
+
+  void _navigateToUpload(BuildContext context) {
+    uploadViewModel.clearData();
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => UploadImageScreen(viewModel: uploadViewModel),
+      ),
+    );
   }
 
   @override
@@ -100,18 +102,29 @@ class DashboardScreen extends StatelessWidget {
               // Central Camera Action
               Center(
                 child: GestureDetector(
-                  onTap: () {
-                    if (!_checkCountryAndRedirect(context)) return;
-
-                    // Reset scanner state before launching camera screen
-                    scanViewModel.clearDetections();
-                    scanViewModel.toggleScanning(true);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => CameraScanScreen(viewModel: scanViewModel),
-                      ),
-                    );
+                  onTap: () async {
+                    if (preferencesService.isCountryConfigured()) {
+                      _navigateToScan(context);
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Silakan pilih negara Anda terlebih dahulu di halaman Settings.'),
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                      final configured = await Navigator.push<bool>(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => SettingsScreen(
+                            preferencesService: preferencesService,
+                            isRedirected: true,
+                          ),
+                        ),
+                      );
+                      if (configured == true && context.mounted) {
+                        _navigateToScan(context);
+                      }
+                    }
                   },
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -158,16 +171,29 @@ class DashboardScreen extends StatelessWidget {
                             borderRadius: BorderRadius.circular(16),
                           ),
                         ),
-                        onPressed: () {
-                          if (!_checkCountryAndRedirect(context)) return;
-
-                          uploadViewModel.clearData();
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => UploadImageScreen(viewModel: uploadViewModel),
-                            ),
-                          );
+                        onPressed: () async {
+                          if (preferencesService.isCountryConfigured()) {
+                            _navigateToUpload(context);
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Silakan pilih negara Anda terlebih dahulu di halaman Settings.'),
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                            final configured = await Navigator.push<bool>(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => SettingsScreen(
+                                  preferencesService: preferencesService,
+                                  isRedirected: true,
+                                ),
+                              ),
+                            );
+                            if (configured == true && context.mounted) {
+                              _navigateToUpload(context);
+                            }
+                          }
                         },
                         icon: const Icon(Icons.photo_library_outlined, color: Color(0xFF2563EB)),
                         label: const Text(

@@ -4,8 +4,13 @@ import '../../../../data/services/preferences_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   final PreferencesService preferencesService;
+  final bool isRedirected;
 
-  const SettingsScreen({Key? key, required this.preferencesService}) : super(key: key);
+  const SettingsScreen({
+    Key? key,
+    required this.preferencesService,
+    this.isRedirected = false,
+  }) : super(key: key);
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -101,6 +106,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _dialCode = dialCode;
       _countryName = name;
     });
+    if (widget.isRedirected) {
+      Navigator.pop(context, true);
+    }
   }
 
   @override
